@@ -1,0 +1,39 @@
+{{- $packagesCount := 0 -}}
+{{- range $m, $as := .packages -}}
+{{-   $packagesCount = add $packagesCount (len $as) -}}
+{{- end -}}
+
+{{ if gt $packagesCount 0 -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+{{ if get .packages "apt" -}}
+sudo apt update
+sudo apt install --yes {{ values .packages.apt | join " " }}
+
+{{ end -}}
+
+{{ if get .packages "brew" -}}
+brew bundle --file=/dev/stdin <<EOF
+{{ range .packages.brew -}}
+brew {{ . | quote }}
+{{ end -}}
+EOF
+
+{{ end -}}
+
+{{ if get .packages "cargo" -}}
+{{ .binaries.cargo }} install {{ values .packages.cargo | join " " }}
+
+{{ end -}}
+
+{{ if get .packages "script" -}}
+{{ values .packages.script | join "\n" }}
+
+{{ end -}}
+
+echo {{ printf "%d packages were installed. Re-init is required" $packagesCount | quote }}
+touch {{ joinPath .chezmoi.cacheDir ".reinit" }}
+
+{{ end -}}
+

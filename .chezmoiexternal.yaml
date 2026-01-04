@@ -1,0 +1,8 @@
+{{ if get .packages "external" -}}
+{{- range .packages.external }}
+{{ .target | quote }}:
+  {{- .config | toYaml | trim | nindent 2 | replace "$platform" ($.chezmoi.os | replace "darwin" "macos") }}
+{{- end }}
+
+{{ end -}}
+

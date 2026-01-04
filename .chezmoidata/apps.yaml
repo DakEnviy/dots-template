@@ -1,0 +1,21 @@
+apps:
+  - name: apt
+    desc: The main command-line package manager for Debian and its derivatives
+    exec: apt
+    conf: false
+  - name: cargo
+    desc: The Rust package manager
+    exec: cargo
+    conf: false
+    install:
+      apt!: build-essential # This packages is needed for compiling rust packages
+      script: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+  - name: chezmoi
+    desc: Manage your dotfiles across multiple diverse machines, securely
+    exec: chezmoi
+    conf: false
+  - name: homebrew
+    desc: The missing package manager for macOS (or Linux)
+    exec: brew
+    conf: false
+

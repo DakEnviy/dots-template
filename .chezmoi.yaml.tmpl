@@ -1,0 +1,188 @@
+{{- $packageManagers := get (include ".chezmoidata/package_managers.yaml" | fromYaml) "packageManagers" -}}
+{{- $apps := get (include ".chezmoidata/apps.yaml" | fromYaml) "apps" -}}
+
+{{- $methods := concat
+      (values $packageManagers | uniq)
+      (list "cargo" "script" "external")
+-}}
+
+{{- $installable := dict -}}
+{{- range $apps -}}
+{{-   $_ := set $installable .exec (hasKey . "install") -}}
+{{- end -}}
+
+{{- $configurable := dict -}}
+{{- range $apps -}}
+{{-   $_ := set $configurable .exec .conf -}}
+{{- end -}}
+
+{{- $osid := .chezmoi.os -}}
+{{- if hasKey .chezmoi.osRelease "id" -}}
+{{-   $osid = printf "%s-%s" .chezmoi.os .chezmoi.osRelease.id -}}
+{{- end -}}
+
+{{- $manager := get $packageManagers $osid -}}
+
+{{- $homePath := list
+      (joinPath .chezmoi.homeDir ".local/bin")
+      (joinPath .chezmoi.homeDir ".cargo/bin")
+      (joinPath .chezmoi.homeDir ".go/bin")
+-}}
+{{- $path := concat (splitList ":" (env "PATH")) $homePath -}}
+{{- if eq .chezmoi.os "darwin" -}}
+{{-   $path = append $path "/opt/homebrew/bin" -}}
+{{- end -}}
+
+{{- $binaries := dict -}}
+{{- range $apps -}}
+{{-   $_ := set $binaries .exec (findExecutable .exec $path) -}}
+{{- end -}}
+
+{{- $nameMaxLen := 0 -}}
+{{- range $apps -}}
+{{-   if gt (len .name) $nameMaxLen -}}
+{{-     $nameMaxLen = len .name -}}
+{{-   end -}}
+{{- end -}}
+
+{{- $installDisplayNames := dict -}}
+{{- range $apps -}}
+{{-   if hasKey . "install" -}}
+{{-     $_ := set $installDisplayNames .exec (printf "%-*s | %s" $nameMaxLen .name .desc) -}}
+{{-   end -}}
+{{- end -}}
+{{- $install := dig "install" dict . -}}
+{{- $prevInstall := deepCopy $install -}}
+{{- if not (deepEqual $installable (dig "installable" dict .)) -}}
+{{-   $install = dict -}}
+{{-   range $apps -}}
+{{-     if hasKey . "install" -}}
+{{-       $_ := set $install .exec (any (get $prevInstall .exec) (get $binaries .exec)) -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+{{- $installList := list -}}
+{{- range $exec, $installed := $install -}}
+{{-   if $installed -}}
+{{-     $installList = append $installList (get $installDisplayNames $exec) -}}
+{{-   end -}}
+{{- end -}}
+{{- if deepEqual $install $prevInstall -}}
+{{-   $installList = promptMultichoiceOnce . "installList" "Which apps need to be installed" (values $installDisplayNames | sortAlpha) $installList -}}
+{{- else -}}
+{{-   $installList = promptMultichoice "Which apps need to be installed" (values $installDisplayNames | sortAlpha) $installList -}}
+{{- end -}}
+{{- $install = dict -}}
+{{- range $apps -}}
+{{-   if hasKey . "install" -}}
+{{-     $_ := set $install .exec (has (get $installDisplayNames .exec) $installList) -}}
+{{-   end -}}
+{{- end -}}
+
+{{- $appToMethod := dict -}}
+{{- $packages := dict -}}
+{{- range $m := $methods -}}
+{{-   if or
+        (and (eq $m $manager) (get $binaries $m))
+        (and (eq $m "cargo") $binaries.cargo)
+        (eq $m "script")
+        (eq $m "external")
+-}}
+{{-     $_ := set $packages $m dict -}}
+{{-     range $a := $apps -}}
+{{-       if and (get $install $a.exec) (not (get $binaries $a.exec)) -}}
+{{-         if and (get $a.install $m) (not (get $appToMethod $a.exec)) -}}
+{{-           $_ := set $appToMethod $a.exec $m -}}
+{{-           $_ := set (get $packages $m) $a.exec (get $a.install $m) -}}
+{{-         else if get $a.install (printf "%s!" $m) -}}
+{{-           $_ := set (get $packages $m) $a.exec (get $a.install (printf "%s!" $m)) -}}
+{{-         end -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+
+{{- $configureDisplayNames := dict -}}
+{{- range $apps -}}
+{{-   if .conf -}}
+{{-     $_ := set $configureDisplayNames .exec (printf "%-*s | %s | %s" $nameMaxLen .name (all (get $binaries .exec) | ternary "yes" "   ") .desc) -}}
+{{-   end -}}
+{{- end -}}
+{{- $configure := dig "configure" dict . -}}
+{{- $prevConfigure := deepCopy $configure -}}
+{{- if not (and (deepEqual $binaries (dig "binaries" dict .)) (deepEqual $configurable (dig "configurable" dict .))) -}}
+{{-   $configure = dict -}}
+{{-   range $apps -}}
+{{-     if .conf -}}
+{{-       $_ := set $configure .exec (any (get $prevConfigure .exec) (get $binaries .exec)) -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+{{- $configureList := list -}}
+{{- range $exec, $configured := $configure -}}
+{{-   if $configured -}}
+{{-     $configureList = append $configureList (get $configureDisplayNames $exec) -}}
+{{-   end -}}
+{{- end -}}
+{{- if deepEqual $configure $prevConfigure -}}
+{{-   $configureList = promptMultichoiceOnce . "configureList" "Which apps need to be configured" (values $configureDisplayNames | sortAlpha) $configureList -}}
+{{- else -}}
+{{-   $configureList = promptMultichoice "Which apps need to be configured" (values $configureDisplayNames | sortAlpha) $configureList -}}
+{{- end -}}
+{{- $normalizedConfigureList := list -}}
+{{- range $configureList -}}
+{{-   $normalizedConfigureList = append $normalizedConfigureList (regexReplaceAll "\\| (yes|   ) \\|" . "|") -}}
+{{- end -}}
+{{- $configureList = $normalizedConfigureList -}}
+{{- $configure = dict -}}
+{{- range $apps -}}
+{{-   if .conf -}}
+{{-     $_ := set $configure .exec (has (regexReplaceAll "\\| (yes|   ) \\|" (get $configureDisplayNames .exec) "|") $configureList) -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* Uncomment it if you need to configure `.gitconfig`. Here is an example of how to use unsafe and prompt
+
+{{- $gitName := dig "git" "name" "" . -}}
+{{- $gitEmail := dig "git" "email" "" . -}}
+{{- if $configure.git -}}
+{{-   $gitName = promptStringOnce . "unsafe.gitName" "What is your name for git" $gitName -}}
+{{-   $gitEmail = promptStringOnce . "unsafe.gitEmail" "What is your email for git" $gitEmail -}}
+{{- else -}}
+{{-   $gitName = "" -}}
+{{-   $gitEmail = "" -}}
+{{- end -}}
+*/ -}}
+
+data:
+  {{- dict
+        "installable" $installable
+        "configurable" $configurable
+        "binaries" $binaries
+        "install" $install
+        "installList" $installList
+        "packages" $packages
+        "configure" $configure
+        "configureList" $configureList
+      | toYaml | trim | nindent 2
+  }}
+  {{- /*
+  git:
+    name: {{ $gitName | quote }}
+    email: {{ $gitEmail | quote }}
+  */}}
+  {{- /* unsafe is used to prompt empty variables */}}
+  unsafe:
+    _: ""
+    {{- /*
+    {{- with $gitName }}
+    gitName: {{ . | quote }}
+    {{- end }}
+    {{- with $gitEmail }}
+    gitEmail: {{ . | quote }}
+    {{- end }}
+    */}}
+
+edit:
+  watch: true
+
