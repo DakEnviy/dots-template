@@ -39,7 +39,8 @@ Add applications to `.chezmoidata/apps.yaml`:
   conf: true               # Set to true if you provide config files for the app
   install:
     apt: package-name      # APT package
-    brew: package-name     # Homebrew package
+    brew: package-name     # Homebrew formula
+    brew: cask "app"       # Homebrew cask
     cargo: crate-name      # Cargo crate
     script: 'command'      # Custom install script
     external: {}           # Chezmoi external source
@@ -47,14 +48,15 @@ Add applications to `.chezmoidata/apps.yaml`:
 
 **Installation methods:**
 
-- **apt/brew**: Standard package manager install (auto-detected by OS)
+- **apt**: APT package install
+- **brew**: Homebrew install. Values starting with `brew`/`cask` or multiline are passed as-is to [Brewfile](https://docs.brew.sh/Brew-Bundle-and-Brewfile), otherwise wrapped as `brew "package"`
 - **cargo**: Installed via `cargo install`
 - **script**: Custom shell command (runs once if package selected)
 - **external**: Downloads binaries/archives via [chezmoi externals](https://www.chezmoi.io/reference/special-files/chezmoiexternal-format/) (GitHub releases, direct URLs)
 
 **Selection logic (priority order):**
 
-1. **System package manager** (apt for Ubuntu, brew for macOS) — if available
+1. **System package manager** (apt for Debian-based, brew for macOS) — if available
 2. **cargo** — if Rust toolchain installed
 3. **script** — always available
 4. **external** — always available
