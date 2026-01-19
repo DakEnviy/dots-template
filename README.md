@@ -104,6 +104,17 @@ Use `!` suffix to add supplementary installation steps:
 
    **Note**: Don't check `.binaries` for config files themselves. If `tmux` binary doesn't exist, `~/.tmux.conf` won't break anything — it just won't be used.
 
+5. **Use binary paths** when the binary might not be in PATH:
+
+   ```go
+   {{ .binaries.starship }} init fish | source
+   ```
+
+   Use `{{ .binaries.app }}` instead of just `app` in these cases:
+   - **Chezmoi `run_*` scripts** — execute outside your configured shell environment
+   - **Non-main shell execution** — e.g., bash script when your main shell is fish
+   - **Early shell initialization** — before PATH is fully configured by your shell scripts
+
 ### 5. Customize `.chezmoi.yaml.tmpl` (Optional)
 
 Add custom prompts for your configs:
