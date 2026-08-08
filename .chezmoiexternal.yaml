@@ -1,7 +1,10 @@
+{{- $normalizedOs := $.chezmoi.os | replace "darwin" "macos" -}}
+{{- $osTitle := $.chezmoi.os | title -}}
+
 {{ if get .packages "external" -}}
 {{- range .packages.external }}
 {{ .target | quote }}:
-  {{- .config | toYaml | trim | nindent 2 | replace "$os" ($.chezmoi.os | replace "darwin" "macos") | replace "$arch" $.chezmoi.arch }}
+  {{- .config | toYaml | trim | nindent 2 | replace "${os}" $normalizedOs | replace "${osTitle}" $osTitle | replace "${arch}" $.chezmoi.arch }}
 {{- end }}
 
 {{ end -}}

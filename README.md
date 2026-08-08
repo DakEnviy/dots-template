@@ -58,7 +58,7 @@ Add applications to `.chezmoidata/apps.yaml`:
 - **script**: Custom shell command (runs once if package selected)
 - **external**: Downloads binaries/archives via [chezmoi externals](https://www.chezmoi.io/reference/special-files/chezmoiexternal-format/) (GitHub releases, direct URLs)
 
-External URLs may use `$os` and `$arch` placeholders. `$os` maps macOS from chezmoi's `darwin` value to `macos`; `$arch` uses chezmoi's architecture value.
+External URLs may use `${os}`, `${osTitle}`, and `${arch}` placeholders. `${os}` maps macOS from chezmoi's `darwin` value to `macos`; `${osTitle}` uses title case (`Darwin` or `Linux`) for release assets; `${arch}` uses chezmoi's architecture value.
 
 **Selection logic (priority order):**
 
