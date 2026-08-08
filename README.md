@@ -35,15 +35,19 @@ Add applications to `.chezmoidata/apps.yaml`:
 ```yaml
 - name: app-name
   desc: Brief description
-  exec: binary-name        # Used for scanning system and as ID for the app
-  conf: true               # Set to true if you provide config files for the app
+  exec: binary-name                                 # Used for scanning system and as ID for the app
+  conf: true                                        # Set to true if you provide config files for the app
+  path:                                             # Optional PATH directories that provide the binary
+    all: .local/app/bin                             # Relative paths are resolved from the home directory
+    darwin: /Applications/MyApp.app/Contents/MacOS  # (you can specify it by os)
+    darwin-arm64: /opt/app/bin                      # (or by osid)
   install:
-    apt: package-name      # APT package
-    brew: package-name     # Homebrew formula
-    brew: cask "app"       # Homebrew cask
-    cargo: crate-name      # Cargo crate
-    script: 'command'      # Custom install script
-    external: {}           # Chezmoi external source
+    apt: package-name                               # APT package
+    brew: package-name                              # Homebrew formula
+    brew: cask "app"                                # Homebrew cask
+    cargo: crate-name                               # Cargo crate
+    script: 'command'                               # Custom install script
+    external: {}                                    # Chezmoi external source
 ```
 
 **Installation methods:**
@@ -53,6 +57,8 @@ Add applications to `.chezmoidata/apps.yaml`:
 - **cargo**: Installed via `cargo install`
 - **script**: Custom shell command (runs once if package selected)
 - **external**: Downloads binaries/archives via [chezmoi externals](https://www.chezmoi.io/reference/special-files/chezmoiexternal-format/) (GitHub releases, direct URLs)
+
+External URLs may use `$os` and `$arch` placeholders. `$os` maps macOS from chezmoi's `darwin` value to `macos`; `$arch` uses chezmoi's architecture value.
 
 **Selection logic (priority order):**
 
@@ -70,6 +76,8 @@ Use `!` suffix to add supplementary installation steps:
 **Why use this?** Some packages require system dependencies (e.g., `build-essential` for Rust compilation) or post-install setup (e.g., changing default shell). These steps execute regardless of which main method was selected.
 
 **`conf` flag:** Set to `true` when you provide configuration files. This enables `.configure.<app>` variable in templates.
+
+**`path` map:** Use this optional scalar-valued map only for PATH directories provided by the application. Keys may be `all`, an operating system, or the `.chezmoi.os`, or the computed `$osid`; more specific values win. `$osid` is `<os>-<arch>` on macOS and `<os>-<release>-<arch>` on Linux. Relative paths are resolved from the home directory.
 
 ### 4. Add Configuration Files
 
